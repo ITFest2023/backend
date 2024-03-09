@@ -1,34 +1,18 @@
 spring:
-
   devtools:
     add-properties: false
-
-  # datasource:
-  #   url: "jdbc:mysql://localhost:3306/smartparkingbits"
-  #   username: "root"
-  #   password: ""
-
   datasource:
     driver-class-name: org.sqlite.JDBC
     url: jdbc:sqlite:springboot.db
     username: "admin"
     password: "admin"
-
   jpa:
-  
-    database-platform: "com.sqlite.config.SQLiteDialect"
+    database-platform: "org.hibernate.dialect.SQLiteDialect"
     hibernate:
       ddl-auto: update
-      format_sql: true
-      dialect: "com.sqlite.config.SQLiteDialect"
     show-sql: false
     properties:
       jakarta:
         persistence:
           sharedCache:
-            mode: ALL     
-  open-in-view: false
-
-
-
-
+            mode: ALL
