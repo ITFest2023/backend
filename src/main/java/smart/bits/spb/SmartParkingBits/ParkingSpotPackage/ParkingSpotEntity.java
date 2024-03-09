@@ -1,5 +1,6 @@
 package smart.bits.spb.SmartParkingBits.ParkingSpotPackage;
 
+import java.sql.Date;
 import java.util.UUID;
 
 import jakarta.persistence.Entity;
@@ -23,13 +24,15 @@ public class ParkingSpotEntity {
     @Id
     private UUID uuid;
 
-    private boolean free_spot;
+    private boolean freeSpot;
 
     private double battery;
 
     private double lat = 0.0;
 
     private double lng = 0.0;
+
+    private long lastTimeReqSec = 0;
 
     @Enumerated(EnumType.STRING)
     private ParkingSpotStatus status = ParkingSpotStatus.UNREGISTERED;

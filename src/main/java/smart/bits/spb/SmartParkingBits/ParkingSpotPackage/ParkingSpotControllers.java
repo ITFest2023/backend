@@ -23,7 +23,7 @@ public class ParkingSpotControllers {
     private ParkingSpotServices parkingSpotServices;
 
     @PostMapping("/create")
-    public String addNewParkingSpot(@RequestBody ParkingSpotEntity parkingSpotEntity) {
+    public ResponseEntity<String> addNewParkingSpot(@RequestBody ParkingSpotEntity parkingSpotEntity) {
 
         return parkingSpotServices.addNewParkingSpot(parkingSpotEntity);
 
@@ -52,14 +52,14 @@ public class ParkingSpotControllers {
 
     record RegisterRequest(double lat, double lng) {}
     @PatchMapping("/register")
-    public String foo(@RequestParam(name = "uuid") UUID uuid, @RequestBody RegisterRequest registerRequest) {
+    public ResponseEntity<String> registerParkingSpotInfo(@RequestParam(name = "uuid") UUID uuid, @RequestBody RegisterRequest registerRequest) {
 
         return parkingSpotServices.registerParkingSpotInfo(uuid, registerRequest);
 
     }
 
     @DeleteMapping("/delete/{uuid}")
-    public String deleteParkingSpotById(@PathVariable UUID uuid) {
+    public ResponseEntity<String> deleteParkingSpotById(@PathVariable UUID uuid) {
 
         return parkingSpotServices.deleteParkingSpotById(uuid);
 

@@ -1,8 +1,10 @@
 package smart.bits.spb.SmartParkingBits.ParkingSpotPackage;
 
+import java.text.Collator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,40 +18,94 @@ public class ParkingSpotServices {
     @Autowired
     private ParkingSpotRepository parkingSpotRepository;
 
+    private static long FIFTEEN_MILI = 15000;
 
-    public String addNewParkingSpot(ParkingSpotEntity parkingSpotEntity) {
+    public ResponseEntity<String> addNewParkingSpot(ParkingSpotEntity parkingSpotEntity) {
 
-        if(parkingSpotEntity == null)
+        UUID uuid = parkingSpotEntity.getUuid();
+
+        if(uuid == null)
         {
-            return "Could not add new parking spot! Spot null!";
+            return ResponseEntity.notFound().build();
         }
 
+        if(parkingSpotRepository.findById(uuid).isPresent())
+        {
+            return ResponseEntity.badRequest().body("ESP already exists!");
+        }
+        
         parkingSpotRepository.saveAndFlush(parkingSpotEntity);
-        
-        return "New parking spot added!";
-        
+        return ResponseEntity.ok().body("Parking spot created");
 
     }
 
     public List<ParkingSpotEntity> getAllParkingSpotsInfo() {
 
-        List<ParkingSpotEntity> parkingSpots = parkingSpotRepository.findAll();
-        return parkingSpots;
-
+        return parkingSpotRepository
+            .findAll()
+            .stream()
+            .filter(
+                
+                e -> e.getStatus().equals(ParkingSpotStatus.REGISTERED)).collect(Collectors.toList()
+                
+            );
     }
 
     public ParkingSpotEntity getParkingSpotInfoById(UUID uuid) {
 
-        if(uuid != null)
+        if(uuid == null)
         {
-            Optional<ParkingSpotEntity> parkingSpot = parkingSpotRepository.findById(uuid);
-            if(parkingSpot.isPresent())
-            {
-                return parkingSpot.get();
-            }
+            return null;
+        }
+
+        Optional<ParkingSpotEntity> parkingSpot = parkingSpotRepository.findById(uuid);
+        if(parkingSpot.isPresent())
+        {
+            return parkingSpot.get();
         }
 
         return null;
+
+    }
+
+    public ResponseEntity<String> deleteParkingSpotById(UUID uuid) {
+
+        if(uuid == null)
+        {
+            return ResponseEntity.notFound().build();
+        }
+
+        if(!parkingSpotRepository.findById(uuid).isPresent())
+        {
+            return ResponseEntity.notFound().build();
+        }
+
+        parkingSpotRepository.deleteById(uuid);
+
+        return ResponseEntity.ok().body("Parking spot deleted!");
+
+    }
+
+    public ResponseEntity<String> registerParkingSpotInfo(UUID uuid, RegisterRequest registerRequest) {
+        
+        if(uuid == null)
+        {
+            return ResponseEntity.notFound().build();
+        }
+
+        ParkingSpotEntity parkingSpotEntity = parkingSpotRepository.findById(uuid).get(); 
+        if(parkingSpotEntity != null)
+        {
+            parkingSpotEntity.setLat(registerRequest.lat());
+            parkingSpotEntity.setLng(registerRequest.lng());
+            parkingSpotEntity.setStatus(ParkingSpotStatus.REGISTERED);
+
+            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
+
+            return ResponseEntity.ok().body("ESP registered!");
+        }
+        
+        return ResponseEntity.notFound().build();
 
     }
 
@@ -60,28 +116,49 @@ public class ParkingSpotServices {
             return ResponseEntity.notFound().build();
         }
 
-        parkingSpotRepository.saveAndFlush(parkingSpotEntity);
-
-        return ResponseEntity.ok().build();
-
-    }
-
-    public String deleteParkingSpotById(UUID uuid) {
-
-        if(uuid == null)
+        if(parkingSpotEntity.getStatus().equals(ParkingSpotStatus.UNREGISTERED))
         {
-            return "Could not delete parking spot! ID null!";
+            return ResponseEntity.badRequest().body("ESP not regitered!");
         }
 
-        parkingSpotRepository.deleteById(uuid);
+        long currentTime = System.currentTimeMillis();
 
-        return "Parking spot eleted!";
-
-    }
-
-    public String registerParkingSpotInfo(UUID uuid, RegisterRequest registerRequest) {
+        if(parkingSpotEntity.getLastTimeReqSec() == 0 && parkingSpotEntity.getBattery() > 20)
+        {
+            parkingSpotEntity.setLastTimeReqSec(currentTime);
+            parkingSpotEntity.setStatus(ParkingSpotStatus.ONLINE);
+            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
+            return ResponseEntity.ok().build();
+        }
         
-        return null;
+        if(parkingSpotEntity.getLastTimeReqSec() == 0 && parkingSpotEntity.getBattery() <= 20)
+        {
+            parkingSpotEntity.setLastTimeReqSec(currentTime);
+            parkingSpotEntity.setStatus(ParkingSpotStatus.LOW_BATTERY);
+            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
+            return ResponseEntity.ok().build();
+        }
+        
+        if(currentTime - parkingSpotEntity.getLastTimeReqSec() <= FIFTEEN_MILI && parkingSpotEntity.getBattery() > 20)
+        {
+            parkingSpotEntity.setLastTimeReqSec(currentTime);
+            parkingSpotEntity.setStatus(ParkingSpotStatus.ONLINE);
+            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
+            return ResponseEntity.ok().build();
+        }
+        
+        if(currentTime - parkingSpotEntity.getLastTimeReqSec() <= FIFTEEN_MILI && parkingSpotEntity.getBattery() <= 20)
+        {
+            parkingSpotEntity.setLastTimeReqSec(currentTime);
+            parkingSpotEntity.setStatus(ParkingSpotStatus.LOW_BATTERY);
+            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
+            return ResponseEntity.ok().build();
+        }
+
+        parkingSpotEntity.setLastTimeReqSec(0);
+        parkingSpotEntity.setStatus(ParkingSpotStatus.OFFLINE);
+        parkingSpotRepository.saveAndFlush(parkingSpotEntity);
+        return ResponseEntity.ok().build();
 
     }
 
