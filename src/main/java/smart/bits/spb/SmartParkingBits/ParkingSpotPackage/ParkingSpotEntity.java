@@ -1,6 +1,5 @@
 package smart.bits.spb.SmartParkingBits.ParkingSpotPackage;
 
-import java.sql.Date;
 import java.util.UUID;
 
 import jakarta.persistence.Entity;

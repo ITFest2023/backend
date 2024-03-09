@@ -1,6 +1,5 @@
 package smart.bits.spb.SmartParkingBits.ParkingSpotPackage;
 
-import java.text.Collator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

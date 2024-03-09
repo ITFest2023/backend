@@ -1,25 +1,38 @@
 spring:
-
-  devtools:
-    add-properties: false
-
+  h2:
+    console:
+      enabled: true
+      path: /yourPath
   datasource:
-    url: "jdbc:mysql://localhost:3306/smartparkingbits"
-    username: "root"
-    password: ""
+    url: jdbc:h2:file:yourFile
+    username: yourUser
+    password: YourPass
+    driverClassName: org.h2.Driver
 
-  jpa:
+# spring:
+
+#   devtools:
+#     add-properties: false
+
+#   datasource:
+#     url: "jdbc:mysql://localhost:3306/smartparkingbits"
+#     username: "root"
+#     password: ""
+
+#   jpa:
   
-    hibernate:
-      ddl-auto: update
-      format_sql: true
-      dialect: "org.hibernate.dialect.MySQL8Dialect"
-    show-sql: false
-    properties:
-      jakarta:
-        persistence:
-          sharedCache:
-            mode: ALL     
-  open-in-view: false
+#     hibernate:
+#       ddl-auto: update
+#       format_sql: true
+#       dialect: "org.hibernate.dialect.H2Dialect"
+#     show-sql: false
+#     properties:
+#       jakarta:
+#         persistence:
+#           sharedCache:
+#             mode: ALL     
+#   open-in-view: false
+
+
 
 
