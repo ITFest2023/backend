@@ -1,38 +1,34 @@
 package smart.bits.spb.SmartParkingBits.ParkingSpotPackage;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import smart.bits.spb.SmartParkingBits.ParkingSpotPackage.ParkingSpotControllers.RegisterRequest;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-
-import smart.bits.spb.SmartParkingBits.ParkingSpotPackage.ParkingSpotControllers.RegisterRequest;
-
 @Service
 public class ParkingSpotServices {
-    
-    @Autowired
-    private ParkingSpotRepository parkingSpotRepository;
 
     private static long FIFTEEN_MILI = 15000;
+    @Autowired
+    private ParkingSpotRepository parkingSpotRepository;
 
     public ResponseEntity<String> addNewParkingSpot(ParkingSpotEntity parkingSpotEntity) {
 
         UUID uuid = parkingSpotEntity.getUuid();
 
-        if(uuid == null)
-        {
+        if (uuid == null) {
             return ResponseEntity.notFound().build();
         }
 
-        if(parkingSpotRepository.findById(uuid).isPresent())
-        {
+        if (parkingSpotRepository.findById(uuid).isPresent()) {
             return ResponseEntity.badRequest().body("ESP already exists!");
         }
-        
+
         parkingSpotRepository.saveAndFlush(parkingSpotEntity);
         return ResponseEntity.ok().body("Parking spot created");
 
@@ -41,41 +37,31 @@ public class ParkingSpotServices {
     public List<ParkingSpotEntity> getAllParkingSpotsInfo() {
 
         return parkingSpotRepository
-            .findAll()
-            .stream()
-            .filter(
-                
-                e -> e.getStatus().equals(ParkingSpotStatus.REGISTERED)).collect(Collectors.toList()
-                
-            );
+                .findAll()
+                .stream()
+                .filter(e -> !e.getStatus().equals(ParkingSpotStatus.UNREGISTERED))
+                .map(this::isDeviceOffline)
+                .collect(Collectors.toList());
     }
 
     public ParkingSpotEntity getParkingSpotInfoById(UUID uuid) {
 
-        if(uuid == null)
-        {
+        if (uuid == null) {
             return null;
         }
 
         Optional<ParkingSpotEntity> parkingSpot = parkingSpotRepository.findById(uuid);
-        if(parkingSpot.isPresent())
-        {
-            return parkingSpot.get();
-        }
-
-        return null;
+        return parkingSpot.orElse(null);
 
     }
 
     public ResponseEntity<String> deleteParkingSpotById(UUID uuid) {
 
-        if(uuid == null)
-        {
+        if (uuid == null) {
             return ResponseEntity.notFound().build();
         }
 
-        if(!parkingSpotRepository.findById(uuid).isPresent())
-        {
+        if (parkingSpotRepository.findById(uuid).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
@@ -86,15 +72,14 @@ public class ParkingSpotServices {
     }
 
     public ResponseEntity<String> registerParkingSpotInfo(UUID uuid, RegisterRequest registerRequest) {
-        
-        if(uuid == null)
-        {
+
+        if (uuid == null) {
             return ResponseEntity.notFound().build();
         }
 
-        ParkingSpotEntity parkingSpotEntity = parkingSpotRepository.findById(uuid).get(); 
-        if(parkingSpotEntity != null)
-        {
+        Optional<ParkingSpotEntity> parkingSpotEntityOptional = parkingSpotRepository.findById(uuid);
+        if (parkingSpotEntityOptional.isPresent()) {
+            ParkingSpotEntity parkingSpotEntity = parkingSpotEntityOptional.get();
             parkingSpotEntity.setLat(registerRequest.lat());
             parkingSpotEntity.setLng(registerRequest.lng());
             parkingSpotEntity.setStatus(ParkingSpotStatus.REGISTERED);
@@ -103,62 +88,52 @@ public class ParkingSpotServices {
 
             return ResponseEntity.ok().body("ESP registered!");
         }
-        
+
         return ResponseEntity.notFound().build();
 
     }
 
     public ResponseEntity<String> notifyParkingSpotInfo(ParkingSpotEntity parkingSpotEntity) {
 
-        if(parkingSpotEntity == null)
-        {
+        if (parkingSpotEntity == null) {
             return ResponseEntity.notFound().build();
         }
 
-        if(parkingSpotEntity.getStatus().equals(ParkingSpotStatus.UNREGISTERED))
-        {
-            return ResponseEntity.badRequest().body("ESP not regitered!");
+        ParkingSpotEntity newEntity = new ParkingSpotEntity();
+        newEntity.setUuid(parkingSpotEntity.getUuid());
+        newEntity.setBattery(parkingSpotEntity.getBattery());
+        newEntity.setFreeSpot(parkingSpotEntity.isFreeSpot());
+
+        if (parkingSpotRepository.findById(newEntity.getUuid()).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ParkingSpotEntity dbEntity = parkingSpotRepository.findById(newEntity.getUuid()).get();
+
+        if (dbEntity.getStatus().equals(ParkingSpotStatus.UNREGISTERED)) {
+            return ResponseEntity.badRequest().body("ESP not registered!");
         }
 
         long currentTime = System.currentTimeMillis();
 
-        if(parkingSpotEntity.getLastTimeReqSec() == 0 && parkingSpotEntity.getBattery() > 20)
-        {
-            parkingSpotEntity.setLastTimeReqSec(currentTime);
-            parkingSpotEntity.setStatus(ParkingSpotStatus.ONLINE);
-            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
-            return ResponseEntity.ok().build();
-        }
-        
-        if(parkingSpotEntity.getLastTimeReqSec() == 0 && parkingSpotEntity.getBattery() <= 20)
-        {
-            parkingSpotEntity.setLastTimeReqSec(currentTime);
-            parkingSpotEntity.setStatus(ParkingSpotStatus.LOW_BATTERY);
-            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
-            return ResponseEntity.ok().build();
-        }
-        
-        if(currentTime - parkingSpotEntity.getLastTimeReqSec() <= FIFTEEN_MILI && parkingSpotEntity.getBattery() > 20)
-        {
-            parkingSpotEntity.setLastTimeReqSec(currentTime);
-            parkingSpotEntity.setStatus(ParkingSpotStatus.ONLINE);
-            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
-            return ResponseEntity.ok().build();
-        }
-        
-        if(currentTime - parkingSpotEntity.getLastTimeReqSec() <= FIFTEEN_MILI && parkingSpotEntity.getBattery() <= 20)
-        {
-            parkingSpotEntity.setLastTimeReqSec(currentTime);
-            parkingSpotEntity.setStatus(ParkingSpotStatus.LOW_BATTERY);
-            parkingSpotRepository.saveAndFlush(parkingSpotEntity);
-            return ResponseEntity.ok().build();
-        }
-
-        parkingSpotEntity.setLastTimeReqSec(0);
-        parkingSpotEntity.setStatus(ParkingSpotStatus.OFFLINE);
-        parkingSpotRepository.saveAndFlush(parkingSpotEntity);
+        newEntity.setLastTimeReqSec(currentTime);
+        newEntity.setStatus(ParkingSpotStatus.ONLINE);
+        parkingSpotRepository.saveAndFlush(newEntity);
         return ResponseEntity.ok().build();
 
     }
 
+    public ParkingSpotEntity isDeviceOffline(ParkingSpotEntity entity){
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - entity.getLastTimeReqSec() > FIFTEEN_MILI) {
+            entity.setStatus(ParkingSpotStatus.OFFLINE);
+        }
+
+        if (entity.getStatus().equals(ParkingSpotStatus.ONLINE) && entity.getBattery() < 20) {
+            entity.setStatus(ParkingSpotStatus.LOW_BATTERY);
+        }
+        parkingSpotRepository.saveAndFlush(entity);
+
+        return entity;
+    }
 }

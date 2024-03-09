@@ -45,7 +45,6 @@ public class ParkingSpotControllers {
 
     @PatchMapping("/notify")
     public ResponseEntity<String> updateParkingSpotInfo(@RequestBody ParkingSpotEntity parkingSpotEntity) {
-
         return parkingSpotServices.notifyParkingSpotInfo(parkingSpotEntity);
 
     }
