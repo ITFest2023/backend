@@ -8,6 +8,9 @@ class SmartParkingBitsApplicationTests {
 
 	@Test
 	void contextLoads() {
+
+		
+
 	}
 
 }
