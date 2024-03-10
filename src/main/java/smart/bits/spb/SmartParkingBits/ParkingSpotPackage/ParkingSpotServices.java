@@ -3,7 +3,6 @@ package smart.bits.spb.SmartParkingBits.ParkingSpotPackage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import smart.bits.spb.SmartParkingBits.ParkingSpotPackage.ParkingSpotControllers.RegisterRequest;
 
 import java.util.List;
 import java.util.Optional;
@@ -71,7 +70,7 @@ public class ParkingSpotServices {
 
     }
 
-    public ResponseEntity<String> registerParkingSpotInfo(UUID uuid, RegisterRequest registerRequest) {
+    public ResponseEntity<String> registerParkingSpotInfo(UUID uuid, double lat, double lng) {
 
         if (uuid == null) {
             return ResponseEntity.notFound().build();
@@ -80,8 +79,8 @@ public class ParkingSpotServices {
         Optional<ParkingSpotEntity> parkingSpotEntityOptional = parkingSpotRepository.findById(uuid);
         if (parkingSpotEntityOptional.isPresent()) {
             ParkingSpotEntity parkingSpotEntity = parkingSpotEntityOptional.get();
-            parkingSpotEntity.setLat(registerRequest.lat());
-            parkingSpotEntity.setLng(registerRequest.lng());
+            parkingSpotEntity.setLat(lat);
+            parkingSpotEntity.setLng(lng);
             parkingSpotEntity.setStatus(ParkingSpotStatus.REGISTERED);
 
             parkingSpotRepository.saveAndFlush(parkingSpotEntity);
@@ -110,6 +109,10 @@ public class ParkingSpotServices {
 
         ParkingSpotEntity dbEntity = parkingSpotRepository.findById(newEntity.getUuid()).get();
 
+        newEntity.setLng(dbEntity.getLng());
+        newEntity.setLat(dbEntity.getLat());
+
+
         if (dbEntity.getStatus().equals(ParkingSpotStatus.UNREGISTERED)) {
             return ResponseEntity.badRequest().body("ESP not registered!");
         }
@@ -123,9 +126,9 @@ public class ParkingSpotServices {
 
     }
 
-    public ParkingSpotEntity isDeviceOffline(ParkingSpotEntity entity){
+    public ParkingSpotEntity isDeviceOffline(ParkingSpotEntity entity) {
         long currentTime = System.currentTimeMillis();
-        if (currentTime - entity.getLastTimeReqSec() > FIFTEEN_MILI) {
+        if (currentTime - entity.getLastTimeReqSec() >= FIFTEEN_MILI) {
             entity.setStatus(ParkingSpotStatus.OFFLINE);
         }
 
